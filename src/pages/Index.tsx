@@ -1,13 +1,34 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState, useEffect } from "react";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { DiarySection } from "@/components/diary/DiarySection";
+import { InspirationSection } from "@/components/inspiration/InspirationSection";
+import { TasksSection } from "@/components/tasks/TasksSection";
 
 const Index = () => {
+  const [activeSection, setActiveSection] = useState("diary");
+
+  // Enable dark mode by default
+  useEffect(() => {
+    document.documentElement.classList.add("dark");
+  }, []);
+
+  const renderSection = () => {
+    switch (activeSection) {
+      case "diary":
+        return <DiarySection />;
+      case "inspiration":
+        return <InspirationSection />;
+      case "tasks":
+        return <TasksSection />;
+      default:
+        return <DiarySection />;
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
-    </div>
+    <AppLayout activeSection={activeSection} onSectionChange={setActiveSection}>
+      {renderSection()}
+    </AppLayout>
   );
 };
 
