@@ -1,4 +1,4 @@
-import { Book, Lightbulb, CheckSquare, Settings } from "lucide-react";
+import { LayoutDashboard, Book, Lightbulb, CheckSquare, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
@@ -7,6 +7,7 @@ interface SidebarProps {
 }
 
 const navItems = [
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "diary", label: "Diary", icon: Book },
   { id: "inspiration", label: "Inspiration", icon: Lightbulb },
   { id: "tasks", label: "Daily Tasks", icon: CheckSquare },
