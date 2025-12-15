@@ -46,11 +46,13 @@ export const Sidebar = ({ activeSection, onSectionChange }: SidebarProps) => {
         ))}
       </nav>
 
-      {/* Settings */}
-      <button className="nav-item w-full text-left text-muted-foreground hover:text-foreground mt-auto">
-        <Settings className="size-5" />
-        <span className="font-medium">Settings</span>
-      </button>
+      {/* Settings & Logout */}
+      <div className="space-y-2 mt-auto">
+        <button className="nav-item w-full text-left text-muted-foreground hover:text-foreground">
+          <Settings className="size-5" />
+          <span className="font-medium">Settings</span>
+        </button>
+      </div>
     </aside>
   );
 };
