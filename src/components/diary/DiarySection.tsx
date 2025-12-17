@@ -8,6 +8,12 @@ type ViewMode = "input" | "canvas";
 
 export const DiarySection = () => {
   const [viewMode, setViewMode] = useState<ViewMode>("input");
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleEntrySaved = () => {
+    setRefreshKey(prev => prev + 1);
+    setViewMode("canvas");
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -42,12 +48,16 @@ export const DiarySection = () => {
       {/* Content */}
       <motion.div 
         className="flex-1 overflow-hidden"
-        key={viewMode}
+        key={`${viewMode}-${refreshKey}`}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
       >
-        {viewMode === "input" ? <DiaryInput /> : <CanvasReview />}
+        {viewMode === "input" ? (
+          <DiaryInput onSave={handleEntrySaved} />
+        ) : (
+          <CanvasReview onAddNew={() => setViewMode("input")} />
+        )}
       </motion.div>
     </div>
   );
