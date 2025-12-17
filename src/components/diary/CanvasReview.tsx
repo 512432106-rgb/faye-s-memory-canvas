@@ -1,73 +1,79 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Filter, Plus } from "lucide-react";
+import { Filter, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StickyNote } from "./StickyNote";
 import { cn } from "@/lib/utils";
-
-const sampleNotes = [
-  {
-    id: "1",
-    date: "Oct 12",
-    title: "Got promoted!",
-    content: "Finally happened! My boss called me in and told me the good news. Celebrated with extra large coffee.",
-    mood: "happy" as const,
-    icon: "smile",
-    style: { top: 120, left: 100 },
-    rotation: -2,
-  },
-  {
-    id: "2",
-    date: "Oct 14",
-    title: "Rainy Gloom",
-    content: "It's been raining all day. Felt a bit lonely looking out the window. Need to call mom soon.",
-    mood: "sad" as const,
-    icon: "cloud",
-    reflection: "Call her this weekend!",
-    style: { top: 150, left: 420 },
-    rotation: 1,
-  },
-  {
-    id: "3",
-    date: "Oct 18",
-    title: "Faye's Bday Party",
-    content: "The surprise party was amazing. I didn't expect so many people to show up.",
-    mood: "happy" as const,
-    icon: "cake",
-    style: { top: 340, left: 180 },
-    rotation: 3,
-  },
-  {
-    id: "4",
-    date: "Oct 20",
-    title: "Argument with M",
-    content: "We argued about the trip logistics. It felt unnecessary but we were both tired.",
-    mood: "sad" as const,
-    icon: "frown",
-    style: { top: 300, left: 550 },
-    rotation: -1,
-  },
-  {
-    id: "5",
-    date: "Oct 27",
-    title: "Can't Sleep",
-    content: "Insomnia struck again. Too many thoughts racing about the project deadline.",
-    mood: "sad" as const,
-    icon: "moon",
-    style: { top: 480, left: 80 },
-    rotation: -3,
-  },
-];
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 type FilterType = "all" | "happy" | "sad";
 
-export const CanvasReview = () => {
-  const [filter, setFilter] = useState<FilterType>("all");
+interface DiaryEntry {
+  id: string;
+  entry_date: string;
+  title: string | null;
+  content: string;
+  mood: string | null;
+  weather: string | null;
+}
 
-  const filteredNotes = sampleNotes.filter((note) => {
+interface CanvasReviewProps {
+  onAddNew?: () => void;
+}
+
+export const CanvasReview = ({ onAddNew }: CanvasReviewProps) => {
+  const { user } = useAuth();
+  const [filter, setFilter] = useState<FilterType>("all");
+  const [entries, setEntries] = useState<DiaryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      fetchEntries();
+    }
+  }, [user]);
+
+  const fetchEntries = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from("diary_entries")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("entry_date", { ascending: false });
+
+      if (error) throw error;
+      setEntries(data || []);
+    } catch (error) {
+      console.error("Failed to fetch entries:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredEntries = entries.filter((entry) => {
     if (filter === "all") return true;
-    return note.mood === filter;
+    return entry.mood === filter;
   });
+
+  // Generate random positions and rotations for notes
+  const getRandomStyle = (index: number) => {
+    const row = Math.floor(index / 3);
+    const col = index % 3;
+    return {
+      top: 120 + row * 220 + (Math.random() * 40 - 20),
+      left: 80 + col * 320 + (Math.random() * 40 - 20),
+    };
+  };
+
+  const getRandomRotation = () => Math.floor(Math.random() * 7) - 3;
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
+  };
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -126,9 +132,32 @@ export const CanvasReview = () => {
 
       {/* Canvas */}
       <div className="flex-1 corkboard-pattern overflow-auto relative p-10 min-h-[600px]">
-        {filteredNotes.map((note) => (
-          <StickyNote key={note.id} {...note} />
-        ))}
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <Loader2 className="size-8 animate-spin text-primary" />
+          </div>
+        ) : filteredEntries.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <p className="text-muted-foreground mb-4">No diary entries yet</p>
+            <Button onClick={onAddNew} className="gap-2">
+              <Plus className="size-4" />
+              Write your first entry
+            </Button>
+          </div>
+        ) : (
+          filteredEntries.map((entry, index) => (
+            <StickyNote
+              key={entry.id}
+              id={entry.id}
+              date={formatDate(entry.entry_date)}
+              title={entry.title || "Untitled"}
+              content={entry.content}
+              mood={(entry.mood === "happy" || entry.mood === "loved") ? "happy" : "sad"}
+              style={getRandomStyle(index)}
+              rotation={getRandomRotation()}
+            />
+          ))
+        )}
       </div>
 
       {/* FAB */}
@@ -137,7 +166,7 @@ export const CanvasReview = () => {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
       >
-        <Button size="lg" className="size-14 rounded-full shadow-float p-0">
+        <Button size="lg" className="size-14 rounded-full shadow-float p-0" onClick={onAddNew}>
           <Plus className="size-6" />
         </Button>
       </motion.div>

@@ -3,7 +3,11 @@ import { motion } from "framer-motion";
 import { Sun, Cloud, CloudRain, Smile, Meh, Frown, Heart, Star, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "sonner";
 
 const weatherOptions = [
   { id: "sunny", icon: Sun, label: "Sunny" },
@@ -19,23 +23,60 @@ const moodOptions = [
 ];
 
 interface DiaryInputProps {
-  onSave?: (entry: { content: string; weather: string; mood: string; date: Date }) => void;
+  onSave?: () => void;
 }
 
 export const DiaryInput = ({ onSave }: DiaryInputProps) => {
+  const { user } = useAuth();
+  const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [weather, setWeather] = useState("sunny");
   const [mood, setMood] = useState("happy");
+  const [isSaving, setIsSaving] = useState(false);
   
   const today = new Date();
   const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
   const monthDay = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
 
-  const handleSave = () => {
-    if (content.trim()) {
-      onSave?.({ content, weather, mood, date: today });
-      setContent("");
+  const handleSave = async () => {
+    if (!content.trim()) {
+      toast.error("Please write something before saving");
+      return;
     }
+    if (!user) {
+      toast.error("Please log in to save entries");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase.from("diary_entries").insert({
+        user_id: user.id,
+        title: title.trim() || null,
+        content: content.trim(),
+        weather,
+        mood,
+        entry_date: today.toISOString().split('T')[0],
+      });
+
+      if (error) throw error;
+
+      toast.success("Diary entry saved!");
+      setTitle("");
+      setContent("");
+      onSave?.();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to save entry");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDiscard = () => {
+    setTitle("");
+    setContent("");
+    setWeather("sunny");
+    setMood("happy");
   };
 
   return (
@@ -95,17 +136,25 @@ export const DiaryInput = ({ onSave }: DiaryInputProps) => {
 
         {/* Text Area */}
         <div className="bg-card rounded-2xl border border-border p-6 shadow-card">
+          {/* Title Input */}
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Give your entry a title..."
+            className="bg-transparent border-none text-xl font-bold text-foreground placeholder:text-muted-foreground focus-visible:ring-0 mb-4 px-0"
+          />
+          
           <Textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Dear Diary, today started with a gentle breeze..."
-            className="min-h-[400px] bg-transparent border-none resize-none text-foreground placeholder:text-muted-foreground focus-visible:ring-0 text-base leading-relaxed"
+            className="min-h-[350px] bg-transparent border-none resize-none text-foreground placeholder:text-muted-foreground focus-visible:ring-0 text-base leading-relaxed"
           />
           
           <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Star className="size-3" />
-              <span>Saved just now</span>
+              <span>{content.length} characters</span>
             </div>
             <p className="text-xs text-muted-foreground italic">"Every day is a fresh start."</p>
           </div>
@@ -113,13 +162,13 @@ export const DiaryInput = ({ onSave }: DiaryInputProps) => {
 
         {/* Actions */}
         <div className="flex justify-end gap-3 mt-6">
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={handleDiscard}>
             <X className="size-4" />
             Discard
           </Button>
-          <Button onClick={handleSave} className="gap-2 shadow-glow">
+          <Button onClick={handleSave} className="gap-2 shadow-glow" disabled={isSaving}>
             <Save className="size-4" />
-            Save Entry
+            {isSaving ? "Saving..." : "Save Entry"}
           </Button>
         </div>
       </div>
