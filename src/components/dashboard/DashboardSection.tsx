@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
 
 const moods = [
   { id: "happy", label: "Happy", icon: Sun, hoverColor: "group-hover:text-yellow-400" },
@@ -42,9 +41,12 @@ interface Inspiration {
   is_practiced: boolean;
 }
 
-export const DashboardSection = () => {
+interface DashboardSectionProps {
+  onSectionChange?: (section: string) => void;
+}
+
+export const DashboardSection = ({ onSectionChange }: DashboardSectionProps) => {
   const { user, profile } = useAuth();
-  const navigate = useNavigate();
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -248,7 +250,7 @@ export const DashboardSection = () => {
                 )}
               </div>
               <button 
-                onClick={() => navigate("/diary")}
+                onClick={() => onSectionChange?.("diary")}
                 className="flex items-center justify-center w-full gap-2 py-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold transition-all shadow-lg shadow-primary/20"
               >
                 <Edit className="size-4" />
@@ -270,7 +272,7 @@ export const DashboardSection = () => {
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold text-foreground">Daily Focus</h3>
                 <button 
-                  onClick={() => navigate("/tasks")}
+                  onClick={() => onSectionChange?.("tasks")}
                   className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   <PlusCircle className="size-6" />
@@ -281,7 +283,7 @@ export const DashboardSection = () => {
                   <div className="flex flex-col items-center justify-center flex-1 text-center py-8">
                     <p className="text-muted-foreground mb-2">No tasks for today</p>
                     <button 
-                      onClick={() => navigate("/tasks")}
+                      onClick={() => onSectionChange?.("tasks")}
                       className="text-primary text-sm font-medium hover:underline"
                     >
                       Add your first task
@@ -355,7 +357,7 @@ export const DashboardSection = () => {
                 </div>
                 <p className="text-muted-foreground mb-2">No inspirations captured today</p>
                 <button 
-                  onClick={() => navigate("/inspiration")}
+                  onClick={() => onSectionChange?.("inspiration")}
                   className="text-primary text-sm font-medium hover:underline"
                 >
                   Capture your first spark
@@ -386,7 +388,7 @@ export const DashboardSection = () => {
                   ))}
                 </div>
                 <button 
-                  onClick={() => navigate("/inspiration")}
+                  onClick={() => onSectionChange?.("inspiration")}
                   className="mt-6 w-full py-3 text-sm font-bold text-muted-foreground hover:text-primary transition-colors border border-dashed border-border rounded-xl"
                 >
                   View All Inspirations
