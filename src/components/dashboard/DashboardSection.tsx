@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { 
   Sun, Cloud, CloudRain, Sparkles, Edit, 
-  PlusCircle, CheckCircle2, Circle
+  PlusCircle, CheckCircle2, Loader2
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 const moods = [
   { id: "happy", label: "Happy", icon: Sun, hoverColor: "group-hover:text-yellow-400" },
@@ -13,29 +16,125 @@ const moods = [
   { id: "inspired", label: "Inspired", icon: Sparkles, hoverColor: "group-hover:text-primary" },
 ];
 
-const tasks = [
-  { id: 1, title: "Morning Meditation", subtitle: "15 mins • Wellness", completed: false },
-  { id: 2, title: "Draft design concepts", subtitle: "Completed 2:30 PM", completed: true },
-  { id: 3, title: "Read 20 pages", subtitle: "Evening Routine", completed: false },
-];
+interface DiaryEntry {
+  id: string;
+  title: string | null;
+  content: string;
+  mood: string | null;
+  entry_date: string;
+}
 
-const inspirationImages = [
-  "https://images.unsplash.com/photo-1557683316-973673bdar29?w=400&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=200&h=200&fit=crop",
-  "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=200&h=200&fit=crop",
-];
+interface Task {
+  id: string;
+  title: string;
+  description: string | null;
+  completed: boolean;
+  scheduled_time: string | null;
+  category: string | null;
+}
+
+interface Inspiration {
+  id: string;
+  title: string | null;
+  content: string;
+  category: string | null;
+  image_url: string | null;
+  is_practiced: boolean;
+}
 
 export const DashboardSection = () => {
-  const [selectedMood, setSelectedMood] = useState<string | null>("inspired");
+  const { user, profile } = useAuth();
+  const navigate = useNavigate();
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [inspirations, setInspirations] = useState<Inspiration[]>([]);
+  const [loading, setLoading] = useState(true);
+  
   const today = new Date();
+  const todayStr = format(today, "yyyy-MM-dd");
   const greeting = getGreeting();
-  const completedTasks = tasks.filter(t => t.completed).length;
 
   function getGreeting() {
     const hour = new Date().getHours();
     if (hour < 12) return "Good Morning";
     if (hour < 18) return "Good Afternoon";
     return "Good Evening";
+  }
+
+  useEffect(() => {
+    if (user) {
+      fetchTodayData();
+    }
+  }, [user]);
+
+  const fetchTodayData = async () => {
+    setLoading(true);
+    try {
+      // Fetch today's diary entries
+      const { data: diaryData } = await supabase
+        .from("diary_entries")
+        .select("*")
+        .eq("entry_date", todayStr)
+        .order("created_at", { ascending: false });
+
+      // Fetch today's tasks
+      const { data: tasksData } = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("task_date", todayStr)
+        .order("scheduled_time", { ascending: true });
+
+      // Fetch today's inspirations
+      const { data: inspirationsData } = await supabase
+        .from("inspirations")
+        .select("*")
+        .eq("inspiration_date", todayStr)
+        .order("created_at", { ascending: false });
+
+      setDiaryEntries(diaryData || []);
+      setTasks(tasksData || []);
+      setInspirations(inspirationsData || []);
+
+      // Set mood from today's diary entry if exists
+      if (diaryData && diaryData.length > 0 && diaryData[0].mood) {
+        setSelectedMood(diaryData[0].mood);
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleTaskComplete = async (taskId: string, completed: boolean) => {
+    try {
+      await supabase
+        .from("tasks")
+        .update({ 
+          completed: !completed,
+          completed_at: !completed ? new Date().toISOString() : null
+        })
+        .eq("id", taskId);
+      
+      setTasks(tasks.map(t => 
+        t.id === taskId ? { ...t, completed: !completed } : t
+      ));
+    } catch (error) {
+      console.error("Error updating task:", error);
+    }
+  };
+
+  const completedTasks = tasks.filter(t => t.completed).length;
+  const displayName = profile?.display_name || "Faye";
+  const lastDiaryEntry = diaryEntries[0];
+
+  if (loading) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (
@@ -51,7 +150,7 @@ export const DashboardSection = () => {
             {format(today, "EEEE, MMMM do")}
           </p>
           <h2 className="text-3xl md:text-4xl font-black leading-tight tracking-tight text-foreground">
-            {greeting}, Faye
+            {greeting}, {displayName}
           </h2>
         </div>
 
@@ -127,17 +226,33 @@ export const DashboardSection = () => {
                     <Edit className="size-5" />
                   </div>
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Last Entry: Yesterday
+                    {lastDiaryEntry ? "Today's Entry" : "No Entry Yet"}
                   </span>
                 </div>
-                <h3 className="text-2xl font-bold text-foreground mb-2">Reflect & Unwind</h3>
-                <p className="text-muted-foreground leading-relaxed mb-6">
-                  The day is slowing down. Take a moment to capture your thoughts, Faye. What was the highlight of today?
-                </p>
+                {lastDiaryEntry ? (
+                  <>
+                    <h3 className="text-2xl font-bold text-foreground mb-2">
+                      {lastDiaryEntry.title || "Today's Reflection"}
+                    </h3>
+                    <p className="text-muted-foreground leading-relaxed mb-6 line-clamp-4">
+                      {lastDiaryEntry.content}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-2xl font-bold text-foreground mb-2">Reflect & Unwind</h3>
+                    <p className="text-muted-foreground leading-relaxed mb-6">
+                      The day is slowing down. Take a moment to capture your thoughts, {displayName}. What was the highlight of today?
+                    </p>
+                  </>
+                )}
               </div>
-              <button className="flex items-center justify-center w-full gap-2 py-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold transition-all shadow-lg shadow-primary/20">
+              <button 
+                onClick={() => navigate("/diary")}
+                className="flex items-center justify-center w-full gap-2 py-4 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold transition-all shadow-lg shadow-primary/20"
+              >
                 <Edit className="size-4" />
-                Write Today's Story
+                {lastDiaryEntry ? "View Diary" : "Write Today's Story"}
               </button>
             </div>
           </div>
@@ -154,49 +269,69 @@ export const DashboardSection = () => {
             <div className="p-6 md:p-8 flex flex-col h-full">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold text-foreground">Daily Focus</h3>
-                <button className="text-muted-foreground hover:text-primary transition-colors">
+                <button 
+                  onClick={() => navigate("/tasks")}
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
                   <PlusCircle className="size-6" />
                 </button>
               </div>
               <div className="flex flex-col gap-3 flex-1">
-                {tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className="group flex items-center gap-4 p-4 rounded-2xl bg-background border border-transparent hover:border-border transition-all cursor-pointer"
-                  >
-                    {task.completed ? (
-                      <CheckCircle2 className="size-6 text-primary" />
-                    ) : (
-                      <div className="relative flex items-center justify-center size-6 rounded-full border-2 border-muted-foreground/50 group-hover:border-primary transition-colors">
-                        <div className="size-3 rounded-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                    )}
-                    <div className="flex flex-col">
-                      <span className={`text-sm font-bold transition-all ${
-                        task.completed 
-                          ? "text-muted-foreground line-through" 
-                          : "text-foreground group-hover:line-through"
-                      }`}>
-                        {task.title}
-                      </span>
-                      <span className={`text-xs ${
-                        task.completed ? "text-muted-foreground/60" : "text-muted-foreground"
-                      }`}>
-                        {task.subtitle}
-                      </span>
-                    </div>
+                {tasks.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center flex-1 text-center py-8">
+                    <p className="text-muted-foreground mb-2">No tasks for today</p>
+                    <button 
+                      onClick={() => navigate("/tasks")}
+                      className="text-primary text-sm font-medium hover:underline"
+                    >
+                      Add your first task
+                    </button>
                   </div>
-                ))}
+                ) : (
+                  tasks.slice(0, 4).map((task) => (
+                    <div
+                      key={task.id}
+                      onClick={() => toggleTaskComplete(task.id, task.completed)}
+                      className="group flex items-center gap-4 p-4 rounded-2xl bg-background border border-transparent hover:border-border transition-all cursor-pointer"
+                    >
+                      {task.completed ? (
+                        <CheckCircle2 className="size-6 text-primary" />
+                      ) : (
+                        <div className="relative flex items-center justify-center size-6 rounded-full border-2 border-muted-foreground/50 group-hover:border-primary transition-colors">
+                          <div className="size-3 rounded-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      )}
+                      <div className="flex flex-col">
+                        <span className={`text-sm font-bold transition-all ${
+                          task.completed 
+                            ? "text-muted-foreground line-through" 
+                            : "text-foreground"
+                        }`}>
+                          {task.title}
+                        </span>
+                        <span className={`text-xs ${
+                          task.completed ? "text-muted-foreground/60" : "text-muted-foreground"
+                        }`}>
+                          {task.scheduled_time ? format(new Date(`2000-01-01T${task.scheduled_time}`), "h:mm a") : ""} 
+                          {task.scheduled_time && task.category ? " • " : ""}
+                          {task.category || ""}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
-              <div className="mt-6 pt-4 border-t border-border flex justify-between items-center text-xs font-medium text-muted-foreground">
-                <span>{completedTasks} of {tasks.length} completed</span>
-                <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-primary rounded-full transition-all"
-                    style={{ width: `${(completedTasks / tasks.length) * 100}%` }}
-                  />
+              {tasks.length > 0 && (
+                <div className="mt-6 pt-4 border-t border-border flex justify-between items-center text-xs font-medium text-muted-foreground">
+                  <span>{completedTasks} of {tasks.length} completed</span>
+                  <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-primary rounded-full transition-all"
+                      style={{ width: `${tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0}%` }}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </motion.div>
@@ -213,36 +348,51 @@ export const DashboardSection = () => {
               <h3 className="text-xl font-bold text-foreground">Daily Spark</h3>
               <Sparkles className="size-5 text-primary" />
             </div>
-            {/* Masonry-ish Grid */}
-            <div className="grid grid-cols-2 gap-3 flex-1">
-              <div className="col-span-2 row-span-1 relative rounded-2xl overflow-hidden min-h-[140px] group bg-gradient-to-br from-primary/20 to-purple-500/20">
-                <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors z-10" />
-                <div className="absolute bottom-3 left-3 z-20">
-                  <p className="text-white font-bold text-sm leading-tight drop-shadow-md">
-                    "Simplicity is the ultimate sophistication."
-                  </p>
+            {inspirations.length === 0 ? (
+              <div className="flex flex-col items-center justify-center flex-1 text-center py-8">
+                <div className="p-4 bg-primary/10 rounded-2xl mb-4">
+                  <Sparkles className="size-8 text-primary" />
                 </div>
-                <div 
-                  className="bg-center bg-cover h-full w-full transform group-hover:scale-105 transition-transform duration-700"
-                  style={{ backgroundImage: `url(${inspirationImages[0]})` }}
-                />
+                <p className="text-muted-foreground mb-2">No inspirations captured today</p>
+                <button 
+                  onClick={() => navigate("/inspiration")}
+                  className="text-primary text-sm font-medium hover:underline"
+                >
+                  Capture your first spark
+                </button>
               </div>
-              <div className="col-span-1 aspect-square rounded-2xl overflow-hidden relative group bg-muted">
-                <div 
-                  className="bg-center bg-cover h-full w-full transform group-hover:scale-110 transition-transform duration-500"
-                  style={{ backgroundImage: `url(${inspirationImages[1]})` }}
-                />
-              </div>
-              <div className="col-span-1 aspect-square rounded-2xl overflow-hidden relative group bg-muted">
-                <div 
-                  className="bg-center bg-cover h-full w-full transform group-hover:scale-110 transition-transform duration-500"
-                  style={{ backgroundImage: `url(${inspirationImages[2]})` }}
-                />
-              </div>
-            </div>
-            <button className="mt-6 w-full py-3 text-sm font-bold text-muted-foreground hover:text-primary transition-colors border border-dashed border-border rounded-xl">
-              + Add to Vision Board
-            </button>
+            ) : (
+              <>
+                <div className="flex flex-col gap-3 flex-1">
+                  {inspirations.slice(0, 3).map((inspiration) => (
+                    <div 
+                      key={inspiration.id}
+                      className="p-4 rounded-2xl bg-background border border-border hover:border-primary/30 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <h4 className="text-sm font-bold text-foreground line-clamp-1">
+                          {inspiration.title || "Untitled"}
+                        </h4>
+                        {inspiration.category && (
+                          <span className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary rounded-full">
+                            {inspiration.category}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2">
+                        {inspiration.content}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <button 
+                  onClick={() => navigate("/inspiration")}
+                  className="mt-6 w-full py-3 text-sm font-bold text-muted-foreground hover:text-primary transition-colors border border-dashed border-border rounded-xl"
+                >
+                  View All Inspirations
+                </button>
+              </>
+            )}
           </div>
         </motion.div>
       </div>
