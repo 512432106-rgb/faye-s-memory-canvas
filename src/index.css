@@ -170,3 +170,23 @@
   background-image: radial-gradient(hsl(var(--secondary)) 1px, transparent 1px);
   background-size: 24px 24px;
 }
+
+/* Float animations for bubbles */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float-slow {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-medium {
+  animation: float 5s ease-in-out infinite;
+  animation-delay: 1s;
+}
+
+.animate-float-fast {
+  animation: float 4s ease-in-out infinite;
+  animation-delay: 2s;
+}
