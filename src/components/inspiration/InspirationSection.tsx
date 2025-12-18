@@ -9,6 +9,11 @@ type ViewMode = "capture" | "library";
 export const InspirationSection = () => {
   const [viewMode, setViewMode] = useState<ViewMode>("capture");
 
+  const handleSaved = () => {
+    // Switch to map view after saving
+    setViewMode("library");
+  };
+
   return (
     <div className="h-full flex flex-col">
       {/* Tab Navigation */}
@@ -47,7 +52,11 @@ export const InspirationSection = () => {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
       >
-        {viewMode === "capture" ? <CaptureForm /> : <BubbleView />}
+        {viewMode === "capture" ? (
+          <CaptureForm onSaved={handleSaved} />
+        ) : (
+          <BubbleView onAddNew={() => setViewMode("capture")} />
+        )}
       </motion.div>
     </div>
   );

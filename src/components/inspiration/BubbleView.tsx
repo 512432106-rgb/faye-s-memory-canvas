@@ -1,10 +1,17 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, Palette, Dumbbell, Book, Globe, UtensilsCrossed, Flower2, Check, Plus, ZoomIn, ZoomOut, Hand } from "lucide-react";
+import { Sparkles, Palette, Dumbbell, Book, Globe, UtensilsCrossed, Flower2, Check, Plus, ZoomIn, ZoomOut, Hand, Gamepad2, Wine, Plane } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "@/hooks/use-toast";
 
 type FilterType = "all" | "practiced" | "unpracticed";
 
@@ -17,24 +24,51 @@ interface Inspiration {
   created_at: string;
 }
 
+const categories = [
+  { id: "games", label: "Games", emoji: "🎮" },
+  { id: "cocktails", label: "Cocktails", emoji: "🍸" },
+  { id: "travel", label: "Travel", emoji: "✈️" },
+  { id: "books", label: "Books", emoji: "📚" },
+  { id: "cooking", label: "Cooking", emoji: "👩‍🍳" },
+  { id: "fitness", label: "Fitness", emoji: "💪" },
+  { id: "art", label: "Art", emoji: "🎨" },
+  { id: "nature", label: "Nature", emoji: "🌿" },
+  { id: "language", label: "Language", emoji: "🌍" },
+];
+
 const categoryIcons: Record<string, typeof Sparkles> = {
   fitness: Dumbbell,
   art: Palette,
-  food: UtensilsCrossed,
+  cooking: UtensilsCrossed,
   nature: Flower2,
-  reading: Book,
+  books: Book,
   language: Globe,
+  games: Gamepad2,
+  cocktails: Wine,
+  travel: Plane,
   default: Sparkles,
 };
 
 const floatClasses = ["animate-float-slow", "animate-float-medium", "animate-float-fast"];
 
-export const BubbleView = () => {
+interface BubbleViewProps {
+  onAddNew?: () => void;
+}
+
+export const BubbleView = ({ onAddNew }: BubbleViewProps) => {
   const { user } = useAuth();
   const [filter, setFilter] = useState<FilterType>("all");
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [inspirations, setInspirations] = useState<Inspiration[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Edit dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<Inspiration | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editPracticed, setEditPracticed] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -65,7 +99,6 @@ export const BubbleView = () => {
     return !item.is_practiced;
   });
 
-  // Generate random positions for bubbles
   const getBubblePosition = (index: number, total: number) => {
     const cols = Math.ceil(Math.sqrt(total));
     const row = Math.floor(index / cols);
@@ -83,6 +116,43 @@ export const BubbleView = () => {
   const getIcon = (category: string | null) => {
     if (!category) return categoryIcons.default;
     return categoryIcons[category.toLowerCase()] || categoryIcons.default;
+  };
+
+  const handleDoubleClick = (item: Inspiration) => {
+    setEditingItem(item);
+    setEditTitle(item.title || "");
+    setEditContent(item.content);
+    setEditCategory(item.category || "");
+    setEditPracticed(item.is_practiced);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
+    
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("inspirations")
+        .update({
+          title: editTitle || null,
+          content: editContent,
+          category: editCategory || null,
+          is_practiced: editPracticed,
+        })
+        .eq("id", editingItem.id);
+
+      if (error) throw error;
+
+      toast({ title: "Inspiration updated!" });
+      setEditDialogOpen(false);
+      fetchInspirations();
+    } catch (error) {
+      console.error("Error updating inspiration:", error);
+      toast({ title: "Failed to update", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -147,7 +217,6 @@ export const BubbleView = () => {
             <p className="text-muted-foreground">No inspirations yet. Add your first spark!</p>
           </div>
         ) : (
-          /* Bubbles */
           filteredInspirations.map((item, index) => {
             const pos = getBubblePosition(index, filteredInspirations.length);
             const size = getBubbleSize(index);
@@ -174,8 +243,7 @@ export const BubbleView = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: index * 0.1, duration: 0.3 }}
                 whileHover={{ scale: 1.1 }}
-                onHoverStart={() => setHoveredId(item.id)}
-                onHoverEnd={() => setHoveredId(null)}
+                onDoubleClick={() => handleDoubleClick(item)}
               >
                 <Icon className="size-5 mb-1" />
                 <span className="text-xs font-medium leading-tight line-clamp-2">
@@ -206,11 +274,73 @@ export const BubbleView = () => {
         <button className="size-8 rounded-full flex items-center justify-center hover:bg-secondary transition-colors text-muted-foreground">
           <Hand className="size-4" />
         </button>
-        <Button size="sm" className="gap-1.5 shadow-glow">
+        <Button size="sm" className="gap-1.5 shadow-glow" onClick={onAddNew}>
           <Plus className="size-4" />
           Add New Spark
         </Button>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Inspiration</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label className="text-sm font-medium">Title</Label>
+              <Input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="Give it a name..."
+                className="mt-1.5"
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Category</Label>
+              <Select value={editCategory} onValueChange={setEditCategory}>
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue placeholder="Select a category..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      <span className="flex items-center gap-2">
+                        <span>{cat.emoji}</span>
+                        <span>{cat.label}</span>
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Content</Label>
+              <Textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                placeholder="Describe your idea..."
+                className="mt-1.5 min-h-[100px]"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Practiced</Label>
+              <Switch
+                checked={editPracticed}
+                onCheckedChange={setEditPracticed}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={saving}>
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
