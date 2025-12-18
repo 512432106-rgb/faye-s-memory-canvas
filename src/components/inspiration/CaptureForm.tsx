@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, Check, Plus, X } from "lucide-react";
+import { Sparkles, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "@/hooks/use-toast";
 
 const categories = [
   { id: "games", label: "Games", emoji: "🎮" },
@@ -13,19 +16,24 @@ const categories = [
   { id: "books", label: "Books", emoji: "📚" },
   { id: "cooking", label: "Cooking", emoji: "👩‍🍳" },
   { id: "fitness", label: "Fitness", emoji: "💪" },
+  { id: "art", label: "Art", emoji: "🎨" },
+  { id: "nature", label: "Nature", emoji: "🌿" },
+  { id: "language", label: "Language", emoji: "🌍" },
 ];
 
 const quickTags = ["#urgent", "#weekend", "#creative", "#relaxing"];
 
 interface CaptureFormProps {
-  onSave?: (idea: { category: string; content: string; tags: string[] }) => void;
+  onSaved?: () => void;
 }
 
-export const CaptureForm = ({ onSave }: CaptureFormProps) => {
+export const CaptureForm = ({ onSaved }: CaptureFormProps) => {
+  const { user } = useAuth();
   const [category, setCategory] = useState("");
   const [content, setContent] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [customTag, setCustomTag] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const toggleTag = (tag: string) => {
     setTags((prev) =>
@@ -40,13 +48,48 @@ export const CaptureForm = ({ onSave }: CaptureFormProps) => {
     }
   };
 
-  const handleSave = () => {
-    if (category && content.trim()) {
-      onSave?.({ category, content, tags });
+  const handleSave = async () => {
+    if (!user) {
+      toast({ title: "Please log in to save inspirations", variant: "destructive" });
+      return;
+    }
+    if (!content.trim()) {
+      toast({ title: "Please enter your idea", variant: "destructive" });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      // Create title from first few words of content
+      const title = content.split(" ").slice(0, 3).join(" ");
+      
+      const { error } = await supabase.from("inspirations").insert({
+        user_id: user.id,
+        title,
+        content,
+        category: category || null,
+        is_practiced: false,
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Inspiration saved!", description: "Your spark has been added to the map." });
       setContent("");
       setCategory("");
       setTags([]);
+      onSaved?.();
+    } catch (error) {
+      console.error("Error saving inspiration:", error);
+      toast({ title: "Failed to save", variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
+  };
+
+  const handleCancel = () => {
+    setContent("");
+    setCategory("");
+    setTags([]);
   };
 
   return (
@@ -137,10 +180,10 @@ export const CaptureForm = ({ onSave }: CaptureFormProps) => {
 
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t border-border">
-          <Button variant="outline">Cancel</Button>
-          <Button onClick={handleSave} className="gap-2 shadow-glow">
+          <Button variant="outline" onClick={handleCancel}>Cancel</Button>
+          <Button onClick={handleSave} disabled={saving} className="gap-2 shadow-glow">
             <Check className="size-4" />
-            Done
+            {saving ? "Saving..." : "Done"}
           </Button>
         </div>
       </div>
