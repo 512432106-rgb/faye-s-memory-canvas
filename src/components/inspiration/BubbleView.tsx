@@ -200,67 +200,63 @@ export const BubbleView = ({ onAddNew }: BubbleViewProps) => {
         </div>
       </div>
 
-      {/* Canvas with grid background */}
-      <div 
-        className="flex-1 relative overflow-auto"
-        style={{
-          backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)",
-          backgroundSize: "24px 24px"
-        }}
-      >
-        {loading ? (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-muted-foreground">Loading inspirations...</p>
-          </div>
-        ) : filteredInspirations.length === 0 ? (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-muted-foreground">No inspirations yet. Add your first spark!</p>
-          </div>
-        ) : (
-          filteredInspirations.map((item, index) => {
-            const pos = getBubblePosition(index, filteredInspirations.length);
-            const size = getBubbleSize(index);
-            const Icon = getIcon(item.category);
-            const floatClass = floatClasses[index % floatClasses.length];
+      {/* Canvas */}
+      <div className="flex-1 relative overflow-auto corkboard-pattern">
+        <div className="relative min-h-full min-w-full p-8">
+          {loading ? (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-muted-foreground">Loading inspirations...</p>
+            </div>
+          ) : filteredInspirations.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-muted-foreground">No inspirations yet. Add your first spark!</p>
+            </div>
+          ) : (
+            filteredInspirations.map((item, index) => {
+              const pos = getBubblePosition(index, filteredInspirations.length);
+              const size = getBubbleSize(index);
+              const Icon = getIcon(item.category);
+              const floatClass = floatClasses[index % floatClasses.length];
 
-            return (
-              <motion.div
-                key={item.id}
-                className={cn(
-                  "absolute cursor-pointer rounded-full border-2 flex flex-col items-center justify-center text-center p-3",
-                  floatClass,
-                  item.is_practiced
-                    ? "bg-primary/20 border-primary text-primary shadow-[0_0_25px_rgba(242,54,101,0.15)]"
-                    : "bg-secondary border-border text-muted-foreground hover:border-primary/50"
-                )}
-                style={{
-                  left: pos.x,
-                  top: pos.y,
-                  width: size,
-                  height: size,
-                }}
-                initial={{ opacity: 0, scale: 0 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.1, duration: 0.3 }}
-                whileHover={{ scale: 1.1 }}
-                onDoubleClick={() => handleDoubleClick(item)}
-              >
-                <Icon className="size-5 mb-1" />
-                <span className="text-xs font-medium leading-tight line-clamp-2">
-                  {item.title || item.content.slice(0, 20)}
-                </span>
-                {!item.is_practiced && (
-                  <span className="text-[10px] uppercase tracking-wide opacity-60 mt-0.5">New Goal</span>
-                )}
-                {item.is_practiced && (
-                  <div className="absolute -top-1 -right-1 size-5 rounded-full bg-primary flex items-center justify-center">
-                    <Check className="size-3 text-primary-foreground" />
-                  </div>
-                )}
-              </motion.div>
-            );
-          })
-        )}
+              return (
+                <motion.div
+                  key={item.id}
+                  className={cn(
+                    "absolute z-10 cursor-pointer rounded-full border-2 flex flex-col items-center justify-center text-center p-3",
+                    floatClass,
+                    item.is_practiced
+                      ? "bg-primary/20 border-primary text-primary shadow-[0_0_25px_rgba(242,54,101,0.15)]"
+                      : "bg-secondary/70 border-border text-foreground/80 shadow-card hover:border-primary/50"
+                  )}
+                  style={{
+                    left: `${pos.x}px`,
+                    top: `${pos.y}px`,
+                    width: `${size}px`,
+                    height: `${size}px`,
+                  }}
+                  initial={{ opacity: 0, scale: 0 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.1, duration: 0.3 }}
+                  whileHover={{ scale: 1.1 }}
+                  onDoubleClick={() => handleDoubleClick(item)}
+                >
+                  <Icon className="size-5 mb-1" />
+                  <span className="text-xs font-medium leading-tight line-clamp-2">
+                    {item.title || item.content.slice(0, 20)}
+                  </span>
+                  {!item.is_practiced && (
+                    <span className="text-[10px] uppercase tracking-wide opacity-60 mt-0.5">New Goal</span>
+                  )}
+                  {item.is_practiced && (
+                    <div className="absolute -top-1 -right-1 size-5 rounded-full bg-primary flex items-center justify-center">
+                      <Check className="size-3 text-primary-foreground" />
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })
+          )}
+        </div>
       </div>
 
       {/* Controls */}
