@@ -103,13 +103,13 @@ export const BubbleView = ({ onAddNew }: BubbleViewProps) => {
     const cols = Math.ceil(Math.sqrt(total));
     const row = Math.floor(index / cols);
     const col = index % cols;
-    const baseX = 100 + col * 150 + (Math.random() * 60 - 30);
-    const baseY = 100 + row * 140 + (Math.random() * 40 - 20);
+    const baseX = 80 + col * 180 + (Math.random() * 40 - 20);
+    const baseY = 80 + row * 170 + (Math.random() * 30 - 15);
     return { x: baseX, y: baseY };
   };
 
   const getBubbleSize = (index: number) => {
-    const sizes = [80, 90, 100, 85, 95];
+    const sizes = [120, 130, 140, 125, 135];
     return sizes[index % sizes.length];
   };
 
@@ -240,12 +240,12 @@ export const BubbleView = ({ onAddNew }: BubbleViewProps) => {
                   whileHover={{ scale: 1.1 }}
                   onDoubleClick={() => handleDoubleClick(item)}
                 >
-                  <Icon className="size-5 mb-1" />
-                  <span className="text-xs font-medium leading-tight line-clamp-2">
-                    {item.title || item.content.slice(0, 20)}
+                  <Icon className="size-6 mb-1.5" />
+                  <span className="text-sm font-medium leading-snug line-clamp-2 px-2 text-center">
+                    {item.title || item.content}
                   </span>
                   {!item.is_practiced && (
-                    <span className="text-[10px] uppercase tracking-wide opacity-60 mt-0.5">New Goal</span>
+                    <span className="text-[10px] uppercase tracking-wide opacity-60 mt-1">New Goal</span>
                   )}
                   {item.is_practiced && (
                     <div className="absolute -top-1 -right-1 size-5 rounded-full bg-primary flex items-center justify-center">
