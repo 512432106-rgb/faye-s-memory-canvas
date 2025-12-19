@@ -156,9 +156,9 @@ export const BubbleView = ({ onAddNew }: BubbleViewProps) => {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="px-8 py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="px-8 py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shrink-0">
         <div>
           <h1 className="text-3xl font-bold text-foreground italic">Faye's Inspiration Map</h1>
           <p className="text-muted-foreground text-sm mt-1">Connecting the dots of your creativity</p>
@@ -200,9 +200,9 @@ export const BubbleView = ({ onAddNew }: BubbleViewProps) => {
         </div>
       </div>
 
-      {/* Canvas */}
-      <div className="flex-1 relative overflow-auto corkboard-pattern">
-        <div className="relative min-h-full min-w-full p-8">
+      {/* Canvas - takes remaining height */}
+      <div className="flex-1 relative overflow-auto corkboard-pattern min-h-0">
+        <div className="absolute inset-0">
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <p className="text-muted-foreground">Loading inspirations...</p>
