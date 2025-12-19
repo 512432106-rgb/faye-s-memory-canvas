@@ -8,9 +8,11 @@ type ViewMode = "capture" | "library";
 
 export const InspirationSection = () => {
   const [viewMode, setViewMode] = useState<ViewMode>("capture");
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const handleSaved = () => {
-    // Switch to map view after saving
+    // Increment key to trigger refetch and switch to map view
+    setRefreshKey(prev => prev + 1);
     setViewMode("library");
   };
 
@@ -55,7 +57,7 @@ export const InspirationSection = () => {
         {viewMode === "capture" ? (
           <CaptureForm onSaved={handleSaved} />
         ) : (
-          <BubbleView onAddNew={() => setViewMode("capture")} />
+          <BubbleView key={refreshKey} onAddNew={() => setViewMode("capture")} />
         )}
       </motion.div>
     </div>
