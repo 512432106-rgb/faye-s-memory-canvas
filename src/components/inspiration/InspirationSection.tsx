@@ -48,7 +48,7 @@ export const InspirationSection = () => {
 
       {/* Content */}
       <motion.div
-        className="flex-1 overflow-hidden"
+        className="flex-1 min-h-0 overflow-hidden"
         key={viewMode}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
