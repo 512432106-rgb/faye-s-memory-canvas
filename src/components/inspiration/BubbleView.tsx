@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, Palette, Dumbbell, Book, Globe, UtensilsCrossed, Flower2, Check, Plus, ZoomIn, ZoomOut, Hand, Gamepad2, Wine, Plane } from "lucide-react";
+import { Sparkles, Palette, Dumbbell, Book, Globe, UtensilsCrossed, Flower2, Check, Plus, ZoomIn, ZoomOut, Hand, Gamepad2, Wine, Plane, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -69,6 +69,7 @@ export const BubbleView = ({ onAddNew }: BubbleViewProps) => {
   const [editCategory, setEditCategory] = useState("");
   const [editPracticed, setEditPracticed] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -152,6 +153,29 @@ export const BubbleView = ({ onAddNew }: BubbleViewProps) => {
       toast({ title: "Failed to update", variant: "destructive" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!editingItem) return;
+    
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("inspirations")
+        .delete()
+        .eq("id", editingItem.id);
+
+      if (error) throw error;
+
+      toast({ title: "Inspiration deleted!" });
+      setEditDialogOpen(false);
+      fetchInspirations();
+    } catch (error) {
+      console.error("Error deleting inspiration:", error);
+      toast({ title: "Failed to delete", variant: "destructive" });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -327,13 +351,24 @@ export const BubbleView = ({ onAddNew }: BubbleViewProps) => {
               />
             </div>
           </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-              Cancel
+          <div className="flex justify-between">
+            <Button 
+              variant="destructive" 
+              onClick={handleDelete} 
+              disabled={deleting}
+              className="gap-1.5"
+            >
+              <Trash2 className="size-4" />
+              {deleting ? "Deleting..." : "Delete"}
             </Button>
-            <Button onClick={handleSaveEdit} disabled={saving}>
-              {saving ? "Saving..." : "Save Changes"}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEdit} disabled={saving}>
+                {saving ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
