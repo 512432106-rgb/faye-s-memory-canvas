@@ -1,4 +1,4 @@
-import { LayoutDashboard, Book, Lightbulb, CheckSquare, Settings } from "lucide-react";
+import { LayoutDashboard, Book, Lightbulb, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
@@ -15,7 +15,7 @@ const navItems = [
 
 export const Sidebar = ({ activeSection, onSectionChange }: SidebarProps) => {
   return (
-    <aside className="w-64 h-screen bg-card border-r border-border flex flex-col p-4">
+    <aside className="w-64 min-h-screen bg-card border-r border-border flex flex-col p-4">
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 py-4 mb-6">
         <div className="size-10 rounded-full bg-primary/20 flex items-center justify-center">
@@ -45,14 +45,6 @@ export const Sidebar = ({ activeSection, onSectionChange }: SidebarProps) => {
           </button>
         ))}
       </nav>
-
-      {/* Settings & Logout */}
-      <div className="space-y-2 mt-auto">
-        <button className="nav-item w-full text-left text-muted-foreground hover:text-foreground">
-          <Settings className="size-5" />
-          <span className="font-medium">Settings</span>
-        </button>
-      </div>
     </aside>
   );
 };
