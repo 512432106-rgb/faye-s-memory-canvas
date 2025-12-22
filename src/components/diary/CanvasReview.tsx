@@ -155,6 +155,7 @@ export const CanvasReview = ({ onAddNew }: CanvasReviewProps) => {
               mood={(entry.mood === "happy" || entry.mood === "loved") ? "happy" : "sad"}
               style={getRandomStyle(index)}
               rotation={getRandomRotation()}
+              onUpdate={fetchEntries}
             />
           ))
         )}
